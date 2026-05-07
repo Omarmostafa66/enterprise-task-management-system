@@ -10,6 +10,8 @@ services:
       # Tell the app to connect to the Redis container using its service name
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      # Connect to the host machine's MySQL (XAMPP) from inside the Docker container
+      - SQLALCHEMY_DATABASE_URL=mysql+pymysql://root:@host.docker.internal:3306/task_db
     depends_on:
       - redis
     volumes:

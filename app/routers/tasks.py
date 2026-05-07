@@ -9,6 +9,7 @@ from app.dependencies.auth import get_current_user, check_role
 from app.utils.cache import get_cached_data, set_cached_data, invalidate_cache
 from app.services.task_service import validate_status_transition
 
+
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 
@@ -20,13 +21,22 @@ def read_tasks(
         db: Session = Depends(get_db),
         current_user=Depends(get_current_user)
 ):
+    """
+    Retrieve all tasks based on optional filters.
+    Results are cached to improve performance.
+    Authorization Rules: Employees can only view their own assigned tasks.
+    """
+    # Enforce Employee Authorization logic
+    if current_user.role == UserRole.EMPLOYEE:
+        assignee_id = current_user.id
+
     # 1. Attempt to fetch data from cache with filters included in the key
     cache_key = f"tasks_all_{current_user.id}_{status}_{priority}_{assignee_id}"
     cached = get_cached_data(cache_key)
     if cached:
         return cached
 
-    # 2. If not in cache, fetch from DB and apply filters
+    # 2. If not found in cache, fetch from the database and apply filters
     query = db.query(Task)
     if status:
         query = query.filter(Task.status == status)
@@ -37,7 +47,7 @@ def read_tasks(
 
     tasks = query.all()
 
-    # 3. Save to cache before returning
+    # 3. Save the retrieved data to cache before returning
     set_cached_data(cache_key, [TaskOut.from_orm(t).dict() for t in tasks])
     return tasks
 
@@ -48,12 +58,16 @@ def create_task(
         db: Session = Depends(get_db),
         current_user=Depends(check_role([UserRole.ADMIN, UserRole.PROJECT_MANAGER]))
 ):
+    """
+    Create a new task.
+    Restricted to Admins and Project Managers.
+    """
     new_task = Task(**task_in.dict())
     db.add(new_task)
     db.commit()
     db.refresh(new_task)
 
-    # Invalidate cache because data has changed
+    # Invalidate cache because the underlying data has changed
     invalidate_cache("tasks_")
     return new_task
 
@@ -65,11 +79,15 @@ def update_task(
         db: Session = Depends(get_db),
         current_user=Depends(get_current_user)
 ):
+    """
+    Update an existing task by ID.
+    Includes role-based restrictions and strict status transition validation.
+    """
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    # Role validation: Employees can only update their assigned tasks
+    # Role validation: Employees can only update their explicitly assigned tasks
     if current_user.role == UserRole.EMPLOYEE and task.assignee_id != current_user.id:
         raise HTTPException(
             status_code=403,
@@ -81,10 +99,10 @@ def update_task(
         if not validate_status_transition(task.status, task_in.status):
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid status transition from {task.status} to {task_in.status}"
+                detail=f"Invalid workflow transition from {task.status} to {task_in.status}. Completed tasks cannot be modified."
             )
 
-    # Update only provided data
+    # Update only the provided fields from the payload
     update_data = task_in.dict(exclude_unset=True)
     for key, value in update_data.items():
         setattr(task, key, value)
@@ -92,7 +110,7 @@ def update_task(
     db.commit()
     db.refresh(task)
 
-    # Invalidate cache because data has changed
+    # Invalidate cache because the underlying data has changed
     invalidate_cache("tasks_")
     return task
 
@@ -101,8 +119,12 @@ def update_task(
 def delete_task(
         task_id: int,
         db: Session = Depends(get_db),
-        current_user=Depends(check_role([UserRole.ADMIN]))  # Only Admin can delete
+        current_user=Depends(check_role([UserRole.ADMIN]))  # Only Admin can perform deletions
 ):
+    """
+    Delete a task by ID.
+    Strictly restricted to Admin users.
+    """
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -110,6 +132,6 @@ def delete_task(
     db.delete(task)
     db.commit()
 
-    # Invalidate cache because data has changed
+    # Invalidate cache because the underlying data has changed
     invalidate_cache("tasks_")
     return {"message": "Task deleted successfully"}

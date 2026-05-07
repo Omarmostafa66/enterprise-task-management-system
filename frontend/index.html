@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TaskMaster X - Enterprise</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet"/>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="loading-bar" id="loadingBar" style="width:0"></div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div id="confirmModal" class="modal-overlay hidden">
+  <div class="modal" style="text-align:center; max-width:340px;">
+    <div style="font-size:36px; color:var(--amber); margin-bottom:14px;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <h3 style="margin-bottom:8px; color:var(--t0); font-family:var(--sans);">Are you sure?</h3>
+    <p id="confirmMessage" style="font-size:13px; color:var(--t2); margin-bottom:24px;">This action cannot be undone.</p>
+    <div style="display:flex; gap:12px; justify-content:center;">
+      <button onclick="closeConfirmModal()" class="btn btn-g" style="flex:1;">Cancel</button>
+      <button id="confirmBtn" class="btn btn-d" style="flex:1;">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="projectModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:500px;">
+    <div class="sh" style="margin-bottom:16px">
+      <span class="sh-title" id="pmTitle">Project Details</span>
+      <button onclick="closeProjectModal()" class="btn-i" style="background:transparent;color:var(--t2);border:none;width:28px;height:28px">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="stack-sm" id="pmContent">
+    </div>
+  </div>
+</div>
+
+<div id="userDetailsModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:500px;">
+    <div class="sh" style="margin-bottom:16px">
+      <span class="sh-title" id="udTitle">User Details</span>
+      <button onclick="closeUserDetailsModal()" class="btn-i" style="background:transparent;color:var(--t2);border:none;width:28px;height:28px">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="stack-sm" id="udContent"></div>
+  </div>
+</div>
+
+<section id="authSection">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+
+  <div class="auth-card">
+    <div class="auth-logo"><i class="fa-solid fa-layer-group"></i></div>
+
+    <h1 class="auth-heading">TaskMaster X</h1>
+    <p class="auth-sub">Enterprise Workflow Platform</p>
+
+    <div class="auth-fields">
+      <div class="af" id="regNameWrap" style="display:none;">
+        <span class="label">Full Name</span>
+        <div class="iw">
+          <i class="fa-solid fa-user ico"></i>
+          <input id="regName" type="text" placeholder="John Doe" class="field" onkeydown="if(event.key==='Enter')handleAuthEnter()"/>
+        </div>
+      </div>
+
+      <div class="af">
+        <span class="label">Email address</span>
+        <div class="iw">
+          <i class="fa-solid fa-envelope ico"></i>
+          <input id="loginEmail" type="email" placeholder="you@company.com" class="field" onkeydown="if(event.key==='Enter')handleAuthEnter()"/>
+        </div>
+      </div>
+
+      <div class="af">
+        <span class="label">Password</span>
+        <div class="iw">
+          <i class="fa-solid fa-lock ico"></i>
+          <input id="loginPass" type="password" placeholder="........" class="field" style="padding-right:36px;" onkeydown="if(event.key==='Enter')handleAuthEnter()"/>
+          <i class="fa-solid fa-eye pw-toggle" onclick="togglePasswordVisibility('loginPass', this)"></i>
+        </div>
+      </div>
+
+      <div class="af" id="regRoleWrap" style="display:none;">
+        <span class="label">Account Role</span>
+        <div class="iw">
+          <select id="regRole" class="field">
+            <option value="employee">Employee</option>
+            <option value="project_manager">Project Manager</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="af" id="authErrWrap">
+        <div class="auth-err" id="authErr">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <span id="authErrMsg">Authentication failed</span>
+        </div>
+      </div>
+
+      <div class="af">
+        <button onclick="login()" id="loginBtn" class="btn btn-p" style="width:100%;padding:13px 22px;font-size:13.5px">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i>
+          Sign In
+        </button>
+      </div>
+
+      <div class="af" style="text-align:center; margin-top:12px;">
+        <a href="#" onclick="toggleAuthMode(event)" id="toggleAuthLink" style="color:var(--a); font-size:12.5px; text-decoration:none; font-weight:600; transition:color 0.2s;">Don't have an account? Create one</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="dashboardSection" class="hidden">
+<div class="page">
+
+  <div class="topbar">
+    <div class="tb-brand">
+      <div class="tb-icon"><i class="fa-solid fa-bolt"></i></div>
+      <div>
+        <div class="tb-name">Enterprise Workspace</div>
+        <div class="tb-meta">
+          <span class="live-dot"></span>
+          Backend connected &mdash; realtime sync active
+        </div>
+      </div>
+    </div>
+
+    <div class="tb-right">
+      <div class="user-chip">
+        <div class="uc-avatar" id="ucAvatar">A</div>
+        <span id="ucEmail" style="font-size:12px;color:var(--t1);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <span class="uc-role r-admin" id="ucRoleChip">Admin</span>
+      </div>
+
+      <button onclick="refreshDash()" class="btn btn-g" style="padding:9px 14px">
+        <i class="fa-solid fa-arrows-rotate" id="ri" style="font-size:12px"></i>
+        Refresh
+      </button>
+
+      <button onclick="openProfile()" class="btn btn-g" style="padding:9px 14px">
+        <i class="fa-solid fa-user" style="font-size:12px"></i>
+        Profile
+      </button>
+
+      <button onclick="logout()" class="btn btn-d" style="padding:9px 14px">
+        <i class="fa-solid fa-right-from-bracket" style="font-size:12px"></i>
+        Logout
+      </button>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="sc" style="--sc-col:var(--a)">
+      <div class="sc-icon" style="background:rgba(79,110,247,.12);color:#818cf8">
+        <i class="fa-solid fa-diagram-project"></i>
+      </div>
+      <div class="sc-label">Projects</div>
+      <div class="sc-num" id="projectsCountCard">0</div>
+      <div class="sc-trend">Total active projects</div>
+    </div>
+
+    <div class="sc" style="--sc-col:var(--a2)">
+      <div class="sc-icon" style="background:rgba(124,92,246,.12);color:#c4b5fd">
+        <i class="fa-solid fa-list-check"></i>
+      </div>
+      <div class="sc-label">Total Tasks</div>
+      <div class="sc-num" id="tasksCountCard">0</div>
+      <div class="sc-trend">Across all projects</div>
+    </div>
+
+    <div class="sc" style="--sc-col:var(--green)">
+      <div class="sc-icon" style="background:rgba(34,212,126,.12);color:#4ade80">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <div class="sc-label">Completed</div>
+      <div class="sc-num" id="doneTasksCard">0</div>
+      <div class="sc-trend">Tasks marked done</div>
+    </div>
+
+    <div class="sc" style="--sc-col:var(--amber)">
+      <div class="sc-icon" style="background:rgba(245,166,35,.12);color:#fbbf24">
+        <i class="fa-solid fa-clock"></i>
+      </div>
+      <div class="sc-label">Pending</div>
+      <div class="sc-num" id="pendingTasksCard">0</div>
+      <div class="sc-trend">Awaiting completion</div>
+    </div>
+  </div>
+
+  <div class="mid-grid">
+    <div class="wc wc-accent mc1" style="--wc-col:rgba(79,110,247,.5)">
+      <div class="wc-label">Workflow Progress</div>
+      <div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:4px">
+        <div class="wc-val" id="progressText">0%</div>
+        <span style="font-size:12px;color:var(--t2);padding-bottom:4px">completion</span>
+      </div>
+      <div class="prog-track"><div class="prog-fill" id="progressBar" style="width:0%"></div></div>
+      <div style="font-size:11px;color:var(--t2);margin-top:10px">Based on tasks marked as Done</div>
+    </div>
+
+    <div class="wc wc-accent mc2" style="--wc-col:rgba(34,212,126,.4)">
+      <div class="wc-label">Active Session</div>
+      <div class="wc-val" id="roleTitle">Administrator</div>
+      <div style="font-size:12px;color:var(--t2);margin-top:2px" id="roleSubtext">Full access granted</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
+        <span class="live-dot"></span>
+        <span style="font-size:11.5px;font-weight:600;color:var(--green)">Session active</span>
+      </div>
+    </div>
+
+    <div class="wc wc-accent mc3" style="--wc-col:rgba(245,166,35,.4)">
+      <div class="wc-label">System Status</div>
+      <div class="wc-val" style="font-size:20px">Online</div>
+      <div style="font-size:12px;color:var(--t2);margin-top:2px">API connection stable</div>
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <span style="font-size:11px;padding:3px 9px;border-radius:5px;background:rgba(34,212,126,.1);color:#4ade80;font-weight:600">API ✓</span>
+        <span style="font-size:11px;padding:3px 9px;border-radius:5px;background:rgba(79,110,247,.1);color:#818cf8;font-weight:600">Auth ✓</span>
+        <span style="font-size:11px;padding:3px 9px;border-radius:5px;background:rgba(245,166,35,.1);color:#fbbf24;font-weight:600">DB ✓</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+
+    <div class="stack pp">
+
+      <div class="wc" id="usersManagementPanel" style="display:none;">
+        <div class="sh">
+          <span class="sh-title">User Management</span>
+        </div>
+        <div id="usersList" class="stack-sm" style="max-height:280px;overflow-y:auto;padding-right:2px"></div>
+      </div>
+
+      <div class="wc" id="auditLogsPanel" style="display:none;">
+        <div class="sh">
+          <span class="sh-title">System Audit Logs</span>
+        </div>
+        <div id="auditList" class="stack-sm" style="max-height:280px;overflow-y:auto;padding-right:2px">
+          <div class="empty-state"><i class="fa-solid fa-clock-rotate-left"></i><p>Pending backend integration...</p></div>
+        </div>
+      </div>
+
+      <div class="wc">
+        <div class="sh">
+          <span class="sh-title">Projects</span>
+          <span class="count-pill" id="projCount">0</span>
+        </div>
+        <div id="projectList" class="stack-sm" style="max-height:360px;overflow-y:auto;padding-right:2px"></div>
+      </div>
+
+      <div class="wc" id="createProjectPanel">
+        <div class="sh" style="margin-bottom:14px">
+          <span class="sh-title">New Project</span>
+        </div>
+        <div class="stack-sm">
+          <div>
+            <span class="label">Project name</span>
+            <input id="projName" type="text" placeholder="Enter project name..." class="field" onkeydown="if(event.key==='Enter')createProject()"/>
+          </div>
+          <div>
+            <span class="label">Description</span>
+            <input id="projDesc" type="text" placeholder="Brief description..." class="field" onkeydown="if(event.key==='Enter')createProject()"/>
+          </div>
+          <div>
+            <span class="label">Manager</span>
+            <select id="projManager" class="field">
+              <option value="">Select Manager</option>
+            </select>
+          </div>
+          <button onclick="createProject()" class="btn btn-p" style="width:100%;margin-top:4px;">
+            <i class="fa-solid fa-plus" style="font-size:12px"></i>
+            Create Project
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stack tp">
+      <div class="wc">
+        <div class="sh">
+          <div>
+            <div class="sh-title">Active Tasks</div>
+          </div>
+        </div>
+        <div class="search-row">
+          <div class="iw" style="flex:1;min-width:160px">
+            <i class="fa-solid fa-magnifying-glass ico"></i>
+            <input type="text" id="searchTask" placeholder="Search tasks..." onkeyup="filterTasks()" class="field"/>
+          </div>
+          <input type="number" id="assigneeFilter" placeholder="Assignee ID" onkeyup="filterTasks()" class="field" style="width:110px;flex-shrink:0"/>
+          <select id="priorityFilter" onchange="filterTasks()" class="field" style="width:110px;flex-shrink:0">
+            <option value="">Priority</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+          </select>
+          <select id="statusFilter" onchange="filterTasks()" class="field" style="width:130px;flex-shrink:0">
+            <option value="">Status</option>
+            <option value="To Do">To Do</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Done">Done</option>
+          </select>
+        </div>
+
+        <div id="taskTableBody" class="stack-sm"></div>
+
+        <div id="paginationControls" style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
+          <button onclick="prevPage()" id="prevBtn" class="btn btn-g" style="padding:7px 14px;" disabled>Previous</button>
+          <span id="pageInfo" style="font-size:12px;color:var(--t2);font-weight:600;">Page 1</span>
+          <button onclick="nextPage()" id="nextBtn" class="btn btn-g" style="padding:7px 14px;" disabled>Next</button>
+        </div>
+      </div>
+
+      <div class="wc" id="deployTaskPanel">
+        <div class="sh" style="margin-bottom:14px">
+          <div>
+            <div class="sh-title">Deploy Task</div>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div>
+            <span class="label">Task title</span>
+            <input id="taskTitle" type="text" placeholder="Task title..." class="field"/>
+          </div>
+          <div>
+            <span class="label">Project</span>
+            <select id="taskProjId" class="field">
+              <option value="">Select Project</option>
+            </select>
+          </div>
+          <div>
+            <span class="label">Priority</span>
+            <select id="taskPriority" class="field">
+              <option value="Low">Low</option>
+              <option value="Medium" selected>Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+          <div>
+            <span class="label">Assignee</span>
+            <select id="taskAssignee" class="field">
+              <option value="">Unassigned</option>
+            </select>
+          </div>
+          <div style="grid-column: span 4; margin-top: 5px;">
+            <button onclick="createTask()" class="btn btn-p" style="width:100%;padding:11px 16px">
+              <i class="fa-solid fa-rocket" style="font-size:11px"></i>
+              Deploy
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</section>
+
+<div id="profileModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="sh" style="margin-bottom:16px">
+      <span class="sh-title">My Profile</span>
+      <button onclick="closeProfile()" class="btn-i" style="background:transparent;color:var(--t2);border:none;width:28px;height:28px">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="stack-sm">
+      <div>
+        <span class="label">Email Address</span>
+        <input id="profEmail" type="text" class="field" disabled style="opacity:0.6;cursor:not-allowed"/>
+      </div>
+      <div>
+        <span class="label">Account Role</span>
+        <input id="profRole" type="text" class="field" disabled style="opacity:0.6;cursor:not-allowed;text-transform:capitalize"/>
+      </div>
+      <div class="divider" style="margin:12px 0"></div>
+      <div>
+        <span class="label">Update Password</span>
+        <div class="iw">
+          <i class="fa-solid fa-lock ico"></i>
+          <input id="profPass" type="password" placeholder="Leave blank to keep current" class="field" style="padding-right:36px;"/>
+          <i class="fa-solid fa-eye pw-toggle" onclick="togglePasswordVisibility('profPass', this)"></i>
+        </div>
+      </div>
+      <button onclick="updateProfile()" id="profSaveBtn" class="btn btn-p" style="width:100%;margin-top:10px;padding:11px">
+        <i class="fa-solid fa-floppy-disk"></i>
+        Save Changes
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="js/main.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/users.js"></script>
+<script src="js/projects.js"></script>
+<script src="js/tasks.js"></script>
+</body>
+</html>
