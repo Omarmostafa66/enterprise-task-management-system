@@ -1,6 +1,32 @@
+let PROJECT_MAP = {};
+let USER_MAP = {};
+
+/* ═══ LOAD MAPPINGS FOR DISPLAY ═══ */
+async function loadTaskMappings() {
+  try {
+    const pRes = await fetch(`${API_URL}/projects/`, {headers:{'Authorization':`Bearer ${TOKEN}`}});
+    if (pRes.ok) {
+      const projs = await pRes.json();
+      projs.forEach(p => PROJECT_MAP[p.id] = p.name);
+    }
+  } catch(e) { console.error("Error loading project mappings"); }
+
+  if (CURRENT_USER_ROLE !== 'employee') {
+    try {
+      const uRes = await fetch(`${API_URL}/auth/users`, {headers:{'Authorization':`Bearer ${TOKEN}`}});
+      if (uRes.ok) {
+        const users = await uRes.json();
+        users.forEach(u => USER_MAP[u.id] = u.full_name);
+      }
+    } catch(e) { console.error("Error loading user mappings"); }
+  }
+}
+
 /* ═══ LOAD TASKS ═══ */
 async function loadTasks(){
   try{
+    await loadTaskMappings();
+
     const res   = await fetch(`${API_URL}/tasks/`,{headers:{'Authorization':`Bearer ${TOKEN}`}});
     const tasks = await res.json();
     ALL_TASKS = tasks;
@@ -101,6 +127,17 @@ function renderTasks(tasks){
         statusOptions = `<option selected>Done</option>`;
     }
 
+    const projectName = PROJECT_MAP[t.project_id] || `Project ID: ${t.project_id}`;
+    let assigneeName = 'Unassigned';
+
+    if (t.assignee_id) {
+        if (CURRENT_USER_ROLE === 'employee') {
+            assigneeName = "Assigned to You";
+        } else {
+            assigneeName = USER_MAP[t.assignee_id] || `User ID: ${t.assignee_id}`;
+        }
+    }
+
     return `
     <div class="tc" id="tc-${t.id}" style="animation-delay:${i*.04}s">
       <div class="tc-icon ${ic[t.priority]||'li'}">
@@ -109,6 +146,10 @@ function renderTasks(tasks){
       <div class="tc-meta">
         <div class="tc-id">TASK-${String(t.id).padStart(4,'0')}</div>
         <div class="tc-name">${t.title}</div>
+        <div style="font-size:11.5px; color:var(--t2); margin-top:4px; display:flex; align-items:center; gap:10px;">
+          <span><i class="fa-solid fa-folder-open" style="margin-right:4px;"></i>${projectName}</span>
+          <span><i class="fa-solid fa-user" style="margin-right:4px;"></i>${assigneeName}</span>
+        </div>
       </div>
       <div class="tc-actions">
         <select onchange="updateTaskStatus(${t.id},this.value)" class="ssel" ${disableSelect}>
@@ -233,7 +274,7 @@ async function executeTaskDeletion(id) {
   }
 }
 
-/* ═══ LOAD ASSIGNEES DROPDOWN ═══ */
+/* ═══ LOAD ASSIGNEES DROPDOWN (EMPLOYEES ONLY) ═══ */
 async function loadUsersForTaskAssignment() {
   if (CURRENT_USER_ROLE === 'employee') return;
   try {
@@ -242,10 +283,10 @@ async function loadUsersForTaskAssignment() {
       const users = await res.json();
       const sel = document.getElementById('taskAssignee');
       if (sel) {
-        // Only active users can be assigned tasks
-        const activeUsers = users.filter(u => u.is_active !== false);
+        /* Filter for active users who are specifically EMPLOYEES */
+        const employees = users.filter(u => u.is_active !== false && u.role === 'employee');
         sel.innerHTML = '<option value="">Unassigned</option>' +
-          activeUsers.map(u => `<option value="${u.id}">${u.full_name} (${u.role})</option>`).join('');
+          employees.map(u => `<option value="${u.id}">${u.full_name}</option>`).join('');
       }
     }
   } catch(e) { console.error("Error fetching users for assignment"); }

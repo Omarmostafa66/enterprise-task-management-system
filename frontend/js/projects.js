@@ -1,18 +1,31 @@
 /* ═══ LOAD PROJECTS ═══ */
-async function loadProjects(){
-  try{
-    const res      = await fetch(`${API_URL}/projects/`,{headers:{'Authorization':`Bearer ${TOKEN}`}});
+async function loadProjects() {
+  try {
+    const res = await fetch(`${API_URL}/projects/`, { headers: { 'Authorization': `Bearer ${TOKEN}` } });
     const projects = await res.json();
+
     bump('projCount', projects.length);
     animNum(document.getElementById('projectsCountCard'), projects.length);
+
     const list = document.getElementById('projectList');
-    if(res.ok){
-      if(!projects.length){
-        list.innerHTML='<div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No projects yet</p></div>';
+
+    /* Populate the Projects Dropdown in Deploy Task Panel */
+    if (CURRENT_USER_ROLE !== 'employee') {
+      const taskProjSel = document.getElementById('taskProjId');
+      if (taskProjSel) {
+        taskProjSel.innerHTML = '<option value="">Select Project</option>' +
+          projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+      }
+    }
+
+    if (res.ok) {
+      if (!projects.length) {
+        list.innerHTML = '<div class="empty-state"><i class="fa-solid fa-folder-open"></i><p>No projects yet</p></div>';
         return;
       }
-      list.innerHTML = projects.map((p,i)=>`
-        <div class="proj-item" style="animation-delay:${i*.05}s; cursor:pointer;" onclick="viewProject(${p.id}, '${p.name}')">
+
+      list.innerHTML = projects.map((p, i) => `
+        <div class="proj-item" style="animation-delay:${i * .05}s; cursor:pointer;" onclick="viewProject(${p.id}, '${p.name}')">
           <div class="proj-num">#${p.id}</div>
           <div style="flex:1;min-width:0">
             <div class="proj-name">${p.name}</div>
@@ -21,55 +34,70 @@ async function loadProjects(){
           <i class="fa-solid fa-chevron-right" style="color:var(--t3);font-size:10px;flex-shrink:0"></i>
         </div>`).join('');
     }
-  }catch(e){ console.error(e); }
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 /* ═══ LOAD MANAGERS DROPDOWN FOR PROJECT CREATION ═══ */
 async function loadManagersForProject() {
   if (CURRENT_USER_ROLE === 'employee') return;
   try {
-    const res = await fetch(`${API_URL}/auth/users`, {headers:{'Authorization':`Bearer ${TOKEN}`}});
+    const res = await fetch(`${API_URL}/auth/users`, { headers: { 'Authorization': `Bearer ${TOKEN}` } });
     if (res.ok) {
       const users = await res.json();
       const sel = document.getElementById('projManager');
       if (sel) {
-        // Filter out normal employees, only Admins or PMs can manage a project
+        /* Filter out normal employees, only Admins or PMs can manage a project */
         const managers = users.filter(u => u.role === 'admin' || u.role === 'project_manager');
         sel.innerHTML = '<option value="">Select Manager</option>' +
           managers.map(u => `<option value="${u.id}">${u.full_name} (${u.role})</option>`).join('');
       }
     }
-  } catch(e) { console.error("Error fetching managers"); }
+  } catch (e) {
+    console.error("Error fetching managers");
+  }
 }
 
 /* ═══ CREATE PROJECT ═══ */
-async function createProject(){
+async function createProject() {
   const name = document.getElementById('projName').value.trim();
   const desc = document.getElementById('projDesc').value.trim() || "No description provided";
   const managerId = document.getElementById('projManager').value;
 
-  if(!name){ flashErr('projName'); return; }
-  if(!managerId){ flashErr('projManager'); toast('Please assign a project manager', 'error'); return; }
+  if (!name) {
+    flashErr('projName');
+    return;
+  }
+  if (!managerId) {
+    flashErr('projManager');
+    toast('Please assign a project manager', 'error');
+    return;
+  }
 
   loadStart();
   try {
-    const res = await fetch(`${API_URL}/projects/`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${TOKEN}`},
+    const res = await fetch(`${API_URL}/projects/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
       body: JSON.stringify({ name, description: desc, manager_id: parseInt(managerId) })
     });
+
     loadDone();
-    if(res.ok){
-      document.getElementById('projName').value='';
-      document.getElementById('projDesc').value='';
-      document.getElementById('projManager').value='';
+
+    if (res.ok) {
+      document.getElementById('projName').value = '';
+      document.getElementById('projDesc').value = '';
+      document.getElementById('projManager').value = '';
+
+      /* Reload projects to update both the list and the Deploy Task dropdown */
       loadProjects();
-      if(typeof loadProjectsForTaskDeployment === 'function') loadProjectsForTaskDeployment(); // Refresh tasks dropdown
+
       toast('Project created successfully');
     } else {
-      toast('Only admins can create projects','error');
+      toast('Only admins can create projects', 'error');
     }
-  } catch(e) {
+  } catch (e) {
     loadDone();
     toast('Server connection failed', 'error');
   }
@@ -84,10 +112,10 @@ async function viewProject(id, name) {
   document.getElementById('projectModal').classList.remove('hidden');
 
   try {
-    const res = await fetch(`${API_URL}/projects/${id}`, {headers:{'Authorization':`Bearer ${TOKEN}`}});
+    const res = await fetch(`${API_URL}/projects/${id}`, { headers: { 'Authorization': `Bearer ${TOKEN}` } });
     const project = await res.json();
 
-    if(res.ok) {
+    if (res.ok) {
       const tasks = project.tasks || [];
       const doneTasks = tasks.filter(t => t.status === 'Done').length;
       const progress = tasks.length ? Math.round((doneTasks / tasks.length) * 100) : 0;
@@ -122,7 +150,7 @@ async function viewProject(id, name) {
     } else {
       content.innerHTML = `<div style="text-align:center; color:var(--red); padding:20px;">Failed to load project details.</div>`;
     }
-  } catch(e) {
+  } catch (e) {
     content.innerHTML = `<div style="text-align:center; color:var(--red); padding:20px;">Network error.</div>`;
   }
 }
@@ -130,3 +158,10 @@ async function viewProject(id, name) {
 function closeProjectModal() {
   document.getElementById('projectModal').classList.add('hidden');
 }
+
+/* ═══ INITIALIZATION LISTENER ═══ */
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof TOKEN !== 'undefined' && TOKEN) {
+    loadManagersForProject();
+  }
+});

@@ -1,25 +1,67 @@
 version: '3.8'
 
 services:
+
   web:
     build: .
     container_name: fastapi_app
+
     ports:
       - "8000:8000"
+
     environment:
-      # Tell the app to connect to the Redis container using its service name
+      # Redis connection settings
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      # Connect to the host machine's MySQL (XAMPP) from inside the Docker container
+
+      # MySQL database connection
+      # Uses host.docker.internal to access XAMPP MySQL running on host machine
       - SQLALCHEMY_DATABASE_URL=mysql+pymysql://root:@host.docker.internal:3306/task_db
+
     depends_on:
       - redis
+
     volumes:
-      # Map the local directory to the container to reflect code changes instantly
+      # Sync project files between host and container
       - .:/app
+
+    restart: always
+
+    networks:
+      - backend_network
+
 
   redis:
     image: redis:alpine
     container_name: redis_cache
+
     ports:
       - "6379:6379"
+
+    command: redis-server --appendonly yes
+
+    volumes:
+      # Persist Redis cache data
+      - redis_data:/data
+
+    restart: always
+
+    networks:
+      - backend_network
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+# Persistent Redis storage
+volumes:
+  redis_data:
+
+
+# Shared internal network
+networks:
+  backend_network:
+    driver: bridge

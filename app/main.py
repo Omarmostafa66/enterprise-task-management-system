@@ -1,4 +1,5 @@
 import time
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -8,6 +9,8 @@ from app.routers import users, tasks, projects
 from app.db.database import engine, Base
 from app.utils.logger import logger
 from app.core.security import SECRET_KEY, ALGORITHM
+from app.utils.cache import redis_client
+
 
 # 1. Create database tables automatically on startup
 Base.metadata.create_all(bind=engine)
@@ -18,47 +21,70 @@ app = FastAPI(
     version="1.0.0"
 )
 
+
 # 2. CORS Configuration for Frontend Integration
 app.add_middleware(
     CORSMiddleware,
+
+    # Allow frontend applications during development
     allow_origins=["*"],
+
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # 3. Monitoring Dashboard Setup
 Instrumentator().instrument(app).expose(app)
 
 
 # 4. Advanced Logging Middleware (Audit Logs Integration)
-# Records details for every request: User Identity, Method, Path, Status Code, and Execution Time
+# Records details for every request:
+# User Identity, Method, Path, Status Code, and Execution Time
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+
     start_time = time.time()
 
     # Attempt to extract user identity from the JWT Token for Audit Logs
     user_identity = "Anonymous"
+
     auth_header = request.headers.get("Authorization")
 
     if auth_header and auth_header.startswith("Bearer "):
+
         token = auth_header.split(" ")[1]
+
         try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(
+                token,
+                SECRET_KEY,
+                algorithms=[ALGORITHM]
+            )
+
             user_identity = payload.get("sub", "Anonymous")
+
         except JWTError:
-            pass  # Invalid token, keep as Anonymous
+
+            logger.warning(
+                f"Invalid JWT token received | path={request.url.path}"
+            )
 
     # Process the request and receive the response
     response = await call_next(request)
 
     process_time = (time.time() - start_time) * 1000
+
     formatted_process_time = "{0:.2f}".format(process_time)
 
     # Structured logging for the Audit Dashboard
     logger.info(
-        f"User: {user_identity} | Method: {request.method} | Path: {request.url.path} | "
-        f"Status: {response.status_code} | Duration: {formatted_process_time}ms"
+        f"User: {user_identity} | "
+        f"Method: {request.method} | "
+        f"Path: {request.url.path} | "
+        f"Status: {response.status_code} | "
+        f"Duration: {formatted_process_time}ms"
     )
 
     return response
@@ -73,25 +99,42 @@ app.include_router(projects.router)
 # 6. Lifecycle Events
 @app.on_event("startup")
 async def startup_event():
+
     logger.info("**************************************************")
     logger.info("The Task Management System is starting up...")
     logger.info("Monitoring metrics available at: http://localhost:8000/metrics")
     logger.info("Swagger documentation at: http://localhost:8000/docs")
+
+    # Verify Redis connection during startup
+    try:
+        redis_client.ping()
+
+        logger.info("Redis connection established successfully.")
+
+    except Exception as e:
+
+        logger.warning(
+            f"Redis connection failed during startup: {str(e)}"
+        )
+
     logger.info("**************************************************")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
+
     logger.warning("The Task Management System is shutting down...")
 
 
 # 7. Root Endpoint
 @app.get("/", tags=["Root"])
 def root():
+
     return {
         "project": "DSC 306 - Task Management System",
         "semester": "Winter 2026",
         "status": "Running",
         "docs": "/docs",
-        "metrics": "/metrics"
+        "metrics": "/metrics",
+        "cache": "Redis Enabled"
     }

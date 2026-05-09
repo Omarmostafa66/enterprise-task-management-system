@@ -1,6 +1,6 @@
 # 🚀 Enterprise Task Management System
 
-A modern enterprise-grade task and project management platform built with **FastAPI**, featuring **JWT Authentication**, **Role-Based Access Control (RBAC)**, workflow validation, interactive dashboard UI, and real-time task monitoring.
+A modern enterprise-grade task and project management platform built with **FastAPI**, featuring **JWT Authentication**, **Role-Based Access Control (RBAC)**, Redis caching, Docker containerization, workflow validation, monitoring, and an interactive dashboard UI.
 
 ---
 
@@ -8,7 +8,7 @@ A modern enterprise-grade task and project management platform built with **Fast
 
 This project is a backend-driven task management system designed for enterprise workflow environments.
 
-The platform allows administrators, project managers, and employees to collaborate through projects and tasks while enforcing secure access control and valid workflow transitions.
+The platform allows administrators, project managers, and employees to collaborate through projects and tasks while enforcing secure access control, audit logging, workflow validation, and high-performance caching.
 
 ---
 
@@ -19,6 +19,21 @@ The platform allows administrators, project managers, and employees to collabora
 - Secure Password Hashing
 - OAuth2 Password Flow
 - Role-Based Access Control (RBAC)
+- Environment Variable Security (.env)
+- Protected Admin Operations
+- Last Admin Protection
+- Self-Demotion Prevention
+
+---
+
+## ⚡ Performance & Monitoring
+- Redis Caching
+- Cache Invalidation
+- Cache HIT / MISS Logging
+- Structured Logging
+- Prometheus Metrics
+- Request Performance Monitoring
+- Docker Health Checks
 
 ---
 
@@ -27,16 +42,20 @@ The platform allows administrators, project managers, and employees to collabora
 ### 🛡️ Admin
 - Manage projects
 - Create and delete tasks
+- Manage users
+- Change user roles
+- View audit logs
 - Full system access
 
 ### 📋 Project Manager
 - Assign and monitor tasks
 - Update task statuses
 - Track workflow progress
+- Create tasks
 
 ### 👨‍💻 Employee
 - View assigned tasks
-- Update task status only
+- Update assigned tasks only
 
 ---
 
@@ -54,6 +73,7 @@ The platform allows administrators, project managers, and employees to collabora
 - Delete tasks
 - Assign priorities
 - Workflow status tracking
+- Role-based task access
 
 ---
 
@@ -87,6 +107,8 @@ The frontend dashboard includes:
 - Toast Notifications
 - Animated Components
 - Status Monitoring
+- User Management Panel
+- Audit Logs Dashboard
 
 ---
 
@@ -95,11 +117,12 @@ The frontend dashboard includes:
 ## Backend
 - FastAPI
 - SQLAlchemy
-- SQLite
+- MySQL
 - Pydantic
 - JWT Authentication
 - OAuth2
 - Redis
+- Prometheus
 
 ---
 
@@ -110,7 +133,9 @@ The frontend dashboard includes:
 
 ---
 
-## Tools
+## DevOps & Tools
+- Docker
+- Docker Compose
 - Swagger UI
 - Git & GitHub
 - Uvicorn
@@ -125,22 +150,27 @@ enterprise-task-management-system/
 ├── app/
 │   ├── core/
 │   ├── db/
+│   ├── dependencies/
 │   ├── models/
 │   ├── routers/
 │   ├── schemas/
 │   ├── services/
+│   ├── utils/
 │   └── main.py
 │
 ├── tests/
 ├── static/
 ├── templates/
+├── Dockerfile
+├── docker-compose.yml
 ├── requirements.txt
+├── .env
 └── README.md
 ```
 
 ---
 
-# ⚙️ Installation
+# ⚙️ Installation (Without Docker)
 
 ## 1️⃣ Clone Repository
 
@@ -190,10 +220,71 @@ pip install -r requirements.txt
 
 ---
 
-# ▶️ Run The Project
+## 6️⃣ Configure Environment Variables
+
+Create a `.env` file in the project root:
+
+```env
+# Database Configuration
+SQLALCHEMY_DATABASE_URL=mysql+pymysql://root:@localhost:3306/task_db
+
+# Redis Configuration
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# JWT Security
+SECRET_KEY=super_secure_enterprise_secret_key_2026
+
+# JWT Algorithm
+ALGORITHM=HS256
+```
+
+---
+
+## 7️⃣ Run The Project
 
 ```bash
 uvicorn app.main:app --reload
+```
+
+---
+
+# 🐳 Run The Project Using Docker
+
+## 1️⃣ Make Sure Docker Desktop Is Installed
+
+Download Docker Desktop:
+
+[Docker Desktop](https://www.docker.com/products/docker-desktop/?utm_source=chatgpt.com)
+
+---
+
+## 2️⃣ Start Docker Desktop
+
+Make sure Docker is running before executing the next command.
+
+---
+
+## 3️⃣ Build And Start Containers
+
+```bash
+docker compose up --build
+```
+
+---
+
+## 4️⃣ Access The Application
+
+### Swagger API Documentation
+
+```text
+http://localhost:8000/docs
+```
+
+### Prometheus Metrics
+
+```text
+http://localhost:8000/metrics
 ```
 
 ---
@@ -212,11 +303,12 @@ http://127.0.0.1:8000/docs
 
 ## Register User
 
+All newly registered users are automatically assigned the Employee role.
+
 ```json
 {
-  "email": "admin@test.com",
-  "full_name": "System Admin",
-  "role": "admin",
+  "email": "employee@test.com",
+  "full_name": "John Doe",
   "password": "123456"
 }
 ```
@@ -229,7 +321,7 @@ http://127.0.0.1:8000/docs
 {
   "access_token": "JWT_TOKEN",
   "token_type": "bearer",
-  "role": "admin"
+  "role": "employee"
 }
 ```
 
@@ -241,6 +333,7 @@ The project includes:
 - Authentication Tests
 - RBAC Tests
 - Workflow Validation Tests
+- Redis Cache Tests
 - API Endpoint Tests
 
 Run tests using:
@@ -259,6 +352,8 @@ pytest
 | Create Task | ✅ | ✅ | ❌ |
 | Update Task | ✅ | ✅ | ✅ |
 | Delete Task | ✅ | ❌ | ❌ |
+| Manage Users | ✅ | ❌ | ❌ |
+| View Audit Logs | ✅ | ❌ | ❌ |
 
 ---
 
@@ -271,6 +366,53 @@ In Progress
    ↓
 Done
 ```
+
+---
+
+# ⚡ Redis Cache Example
+
+### First Request
+
+```text
+Cache MISS
+```
+
+### Second Request
+
+```text
+Cache HIT
+```
+
+This confirms that task data is being served directly from Redis cache for improved performance.
+
+---
+
+# 📈 Monitoring
+
+Prometheus metrics are available at:
+
+```text
+http://localhost:8000/metrics
+```
+
+The system tracks:
+- Request duration
+- API usage
+- Cache performance
+- Application health
+- Request logs
+
+---
+
+# 🔐 Security Features
+
+- JWT Token Authentication
+- Password Hashing
+- Environment Variable Protection
+- Last Admin Protection
+- Self-Demotion Prevention
+- Role-Based Permissions
+- Protected Endpoints
 
 ---
 
@@ -294,7 +436,8 @@ Done
 Backend Developer | FastAPI Enthusiast | AI & Full Stack Learner
 
 GitHub:
-https://github.com/Omarmostafa66
+
+[Omarmostafa66 GitHub](https://github.com/Omarmostafa66?utm_source=chatgpt.com)
 
 ---
 
