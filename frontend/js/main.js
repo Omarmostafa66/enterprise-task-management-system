@@ -118,29 +118,150 @@ function isStrongPassword(pwd) {
 
 /* ═══ LOAD AUDIT LOGS FOR ADMIN ═══ */
 async function loadAuditLogs() {
+
   if (CURRENT_USER_ROLE !== 'admin') return;
+
   const list = document.getElementById('auditList');
+
   if(!list) return;
 
+  /* Loading state */
+  list.innerHTML = `
+    <div class="empty-state">
+      <i class="fa-solid fa-circle-notch fa-spin-slow"></i>
+      <p>Loading audit logs...</p>
+    </div>
+  `;
+
   try {
-    const res = await fetch(`${API_URL}/auth/audit-logs`, {headers:{'Authorization':`Bearer ${TOKEN}`}});
+
+    const res = await fetch(
+      `${API_URL}/auth/audit-logs`,
+      {
+        headers:{
+          'Authorization':`Bearer ${TOKEN}`
+        }
+      }
+    );
+
     if(res.ok) {
+
       const data = await res.json();
+
       const logs = data.logs || [];
 
-      if(!logs.length || (logs.length === 1 && logs[0].includes("No logs"))) {
-        list.innerHTML = `<div class="empty-state"><i class="fa-solid fa-check-double"></i><p>No system activity recorded yet.</p></div>`;
+      /* Empty logs state */
+      if(
+        !logs.length ||
+        (logs.length === 1 && logs[0].includes("No logs"))
+      ) {
+
+        list.innerHTML = `
+          <div class="empty-state">
+            <i class="fa-solid fa-check-double"></i>
+            <p>No system activity recorded yet.</p>
+          </div>
+        `;
+
         return;
       }
 
       /* Reverse array to show newest logs on top */
       list.innerHTML = logs.reverse().map((log, i) => `
-        <div style="padding:8px 10px; border-bottom:1px solid var(--line2); font-family:var(--mono); font-size:11px; color:var(--t1); animation-delay:${i*0.02}s;" class="tc">
-           ${log.replace(/\|/g, '<span style="color:var(--line3); margin:0 6px;">|</span>')}
+
+        <div
+          class="audit-log-item tc"
+          style="
+            padding:10px 12px;
+            border-bottom:1px solid var(--line2);
+            font-family:var(--mono);
+            font-size:11px;
+            color:var(--t1);
+            animation-delay:${i * 0.02}s;
+          "
+        >
+
+          ${formatAuditLog(log)}
+
         </div>
+
       `).join('');
+
+      /* Show success toast */
+      console.log(
+        `Audit logs loaded successfully | count=${logs.length}`
+      );
+
+    } else {
+
+      list.innerHTML = `
+        <div class="empty-state">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <p>Failed to load audit logs.</p>
+        </div>
+      `;
+
+      console.error(
+        `Audit logs request failed | status=${res.status}`
+      );
     }
+
   } catch(e) {
-    list.innerHTML = `<div class="empty-state"><p>Error connecting to audit service.</p></div>`;
+
+    list.innerHTML = `
+      <div class="empty-state">
+        <i class="fa-solid fa-server"></i>
+        <p>Error connecting to audit service.</p>
+      </div>
+    `;
+
+    console.error(
+      'Audit logs fetch error:',
+      e
+    );
   }
 }
+
+/* ═══ FORMAT AUDIT LOGS ═══ */
+function formatAuditLog(log) {
+
+  return log
+    .replace(
+      /\|/g,
+      '<span style="color:var(--line3); margin:0 6px;">|</span>'
+    )
+    .replace(
+      /User:/g,
+      '<span style="color:#7dd3fc;">User:</span>'
+    )
+    .replace(
+      /Method:/g,
+      '<span style="color:#c084fc;">Method:</span>'
+    )
+    .replace(
+      /Path:/g,
+      '<span style="color:#34d399;">Path:</span>'
+    )
+    .replace(
+      /Status:/g,
+      '<span style="color:#fbbf24;">Status:</span>'
+    )
+    .replace(
+      /Duration:/g,
+      '<span style="color:#fb7185;">Duration:</span>'
+    );
+}
+
+/* ═══ AUTO REFRESH AUDIT LOGS ═══ */
+setInterval(() => {
+
+  if (
+    TOKEN &&
+    CURRENT_USER_ROLE === 'admin' &&
+    !document.getElementById('dashboardSection')?.classList.contains('hidden')
+  ) {
+
+    loadAuditLogs();
+  }
+
+}, 15000);

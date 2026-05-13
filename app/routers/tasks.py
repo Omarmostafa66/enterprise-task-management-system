@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -59,7 +60,11 @@ def read_tasks(
     cached = get_cached_data(cache_key)
 
     if cached:
-        logger.info(f"Returning tasks from cache | key={cache_key}")
+
+        logger.info(
+            f"Returning tasks from cache | key={cache_key}"
+        )
+
         return cached
 
     # Build database query with optional filters
@@ -97,7 +102,12 @@ def read_tasks(
 def create_task(
         task_in: TaskCreate,
         db: Session = Depends(get_db),
-        current_user=Depends(check_role([UserRole.ADMIN, UserRole.PROJECT_MANAGER]))
+        current_user=Depends(
+            check_role([
+                UserRole.ADMIN,
+                UserRole.PROJECT_MANAGER
+            ])
+        )
 ):
     """
     Create a new task.
@@ -109,6 +119,22 @@ def create_task(
         f"title={task_in.title} | "
         f"user={current_user.email}"
     )
+
+    # Validate due date is not in the past
+    if (
+        task_in.due_date and
+        task_in.due_date < datetime.utcnow()
+    ):
+
+        logger.warning(
+            f"Invalid due date detected | "
+            f"title={task_in.title}"
+        )
+
+        raise HTTPException(
+            status_code=400,
+            detail="Due date cannot be in the past"
+        )
 
     new_task = Task(**task_in.dict())
 
@@ -148,7 +174,10 @@ def update_task(
     task = db.query(Task).filter(Task.id == task_id).first()
 
     if not task:
-        logger.warning(f"Task not found | task_id={task_id}")
+
+        logger.warning(
+            f"Task not found | task_id={task_id}"
+        )
 
         raise HTTPException(
             status_code=404,
@@ -175,7 +204,10 @@ def update_task(
     # Status transition lifecycle validation
     if task_in.status and task_in.status != task.status:
 
-        if not validate_status_transition(task.status, task_in.status):
+        if not validate_status_transition(
+            task.status,
+            task_in.status
+        ):
 
             logger.warning(
                 f"Invalid workflow transition | "
@@ -192,6 +224,22 @@ def update_task(
                     f"Completed tasks cannot be modified."
                 )
             )
+
+    # Validate due date if provided
+    if (
+        task_in.due_date and
+        task_in.due_date < datetime.utcnow()
+    ):
+
+        logger.warning(
+            f"Invalid due date update | "
+            f"task_id={task_id}"
+        )
+
+        raise HTTPException(
+            status_code=400,
+            detail="Due date cannot be in the past"
+        )
 
     # Update only the provided fields from the payload
     update_data = task_in.dict(exclude_unset=True)

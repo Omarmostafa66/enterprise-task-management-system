@@ -354,6 +354,9 @@ function applyRoleUI(){
     if(userPanel) userPanel.style.display='block';
     if(auditPanel) auditPanel.style.display='block';
 
+    /* Load audit logs for admin users */
+    loadAuditLogs();
+
   } else if(role==='employee') {
 
     if(cpPanel) cpPanel.style.display='none';
@@ -365,6 +368,73 @@ function applyRoleUI(){
   } else if(role==='project_manager') {
 
     if(cpPanel) cpPanel.style.display='none';
+  }
+}
+
+/* ═══ AUDIT LOGS ═══ */
+async function loadAuditLogs() {
+
+  const logsContainer = document.getElementById('auditList');
+
+  if (!logsContainer) return;
+
+  logsContainer.innerHTML = `
+    <div class="empty-state">
+      <i class="fa-solid fa-circle-notch fa-spin-slow"></i>
+      <p>Loading audit logs...</p>
+    </div>
+  `;
+
+  try {
+
+    const res = await fetch(`${API_URL}/auth/audit-logs`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+
+      logsContainer.innerHTML = `
+        <div class="empty-state">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <p>Failed to load audit logs</p>
+        </div>
+      `;
+
+      return;
+    }
+
+    const logs = data.logs || [];
+
+    if (!logs.length) {
+
+      logsContainer.innerHTML = `
+        <div class="empty-state">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <p>No audit logs available</p>
+        </div>
+      `;
+
+      return;
+    }
+
+    logsContainer.innerHTML = logs.map(log => `
+      <div class="audit-log-item">
+        <div class="audit-log-text">${log}</div>
+      </div>
+    `).join('');
+
+  } catch(e) {
+
+    logsContainer.innerHTML = `
+      <div class="empty-state">
+        <i class="fa-solid fa-server"></i>
+        <p>Backend server offline</p>
+      </div>
+    `;
   }
 }
 
@@ -495,6 +565,13 @@ function refreshDash(){
     promises.push(loadUsersList());
   }
 
+  /* Update audit logs */
+  if (
+    CURRENT_USER_ROLE === 'admin'
+  ) {
+    promises.push(loadAuditLogs());
+  }
+
   /* Update task assignees */
   if (
     CURRENT_USER_ROLE !== 'employee' &&
@@ -536,6 +613,13 @@ function loadDashboard(){
     loadUsersList();
   }
 
+  /* Load audit logs */
+  if (
+    CURRENT_USER_ROLE === 'admin'
+  ) {
+    loadAuditLogs();
+  }
+
   /* Update task assignees */
   if (
     CURRENT_USER_ROLE !== 'employee' &&
@@ -550,5 +634,145 @@ function loadDashboard(){
     typeof loadManagersForProject === 'function'
   ) {
     loadManagersForProject();
+  }
+}
+
+
+/* ═══ VIEW USER PROFILE ═══ */
+async function viewUser(userId) {
+
+  const modal =
+    document.getElementById('userProfileModal');
+
+  const body =
+    document.getElementById('userProfileBody');
+
+  if(!modal || !body) return;
+
+  modal.classList.remove('hidden');
+
+  body.innerHTML = `
+    <div class="empty-state">
+      <i class="fa-solid fa-circle-notch fa-spin-slow"></i>
+      <p>Loading profile...</p>
+    </div>
+  `;
+
+  try {
+
+    loadStart();
+
+    /* Fetch user details from backend */
+    const res = await fetch(
+      `${API_URL}/auth/users/${userId}/details`,
+      {
+        headers:{
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      }
+    );
+
+    loadDone();
+
+    if(!res.ok){
+
+      body.innerHTML = `
+        <div class="empty-state">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <p>Failed to load profile</p>
+        </div>
+      `;
+
+      return;
+    }
+
+    const user = await res.json();
+
+    /* Format role */
+    let role =
+      String(user.role || 'employee')
+        .replace('UserRole.', '')
+        .replace('_', ' ')
+        .toUpperCase();
+
+    body.innerHTML = `
+
+      <div class="profile-grid">
+
+        <div class="profile-avatar-large">
+          ${user.email
+            ? user.email[0].toUpperCase()
+            : 'U'}
+        </div>
+
+        <div class="profile-info-group">
+
+          <div class="profile-field">
+            <span class="profile-label">
+              Full Name
+            </span>
+
+            <div class="profile-value">
+              ${user.full_name || 'N/A'}
+            </div>
+          </div>
+
+          <div class="profile-field">
+            <span class="profile-label">
+              Email Address
+            </span>
+
+            <div class="profile-value">
+              ${user.email || 'N/A'}
+            </div>
+          </div>
+
+          <div class="profile-field">
+            <span class="profile-label">
+              Role
+            </span>
+
+            <div class="profile-value">
+              ${role}
+            </div>
+          </div>
+
+          <div class="profile-field">
+            <span class="profile-label">
+              User ID
+            </span>
+
+            <div class="profile-value">
+              #${user.id || 'N/A'}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    `;
+
+  } catch(e) {
+
+    loadDone();
+
+    body.innerHTML = `
+      <div class="empty-state">
+        <i class="fa-solid fa-server"></i>
+        <p>Network error.</p>
+      </div>
+    `;
+  }
+}
+
+/* ═══ CLOSE USER PROFILE MODAL ═══ */
+function closeUserProfileModal(){
+
+  const modal =
+    document.getElementById('userProfileModal');
+
+  if(modal){
+
+    modal.classList.add('hidden');
   }
 }

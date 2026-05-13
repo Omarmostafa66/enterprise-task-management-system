@@ -4,12 +4,18 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from jose import jwt, JWTError
+from sqlalchemy.orm import Session
 
 from app.routers import users, tasks, projects
-from app.db.database import engine, Base
+from app.db.database import engine, Base, SessionLocal
 from app.utils.logger import logger
-from app.core.security import SECRET_KEY, ALGORITHM
+from app.core.security import (
+    SECRET_KEY,
+    ALGORITHM,
+    get_password_hash
+)
 from app.utils.cache import redis_client
+from app.models.user import User, UserRole
 
 
 # 1. Create database tables automatically on startup
@@ -116,6 +122,55 @@ async def startup_event():
         logger.warning(
             f"Redis connection failed during startup: {str(e)}"
         )
+
+    # Create default admin account if no admin exists
+    db: Session = SessionLocal()
+
+    try:
+
+        existing_admin = db.query(User).filter(
+            User.role == UserRole.ADMIN
+        ).first()
+
+        if not existing_admin:
+
+            default_admin = User(
+                email="admin@system.com",
+                full_name="Default System Admin",
+                hashed_password=get_password_hash("admin123"),
+                role=UserRole.ADMIN,
+                is_active=True
+            )
+
+            db.add(default_admin)
+            db.commit()
+
+            logger.info(
+                "Default admin account created successfully."
+            )
+
+            logger.info(
+                "Default Admin Credentials | "
+                "Email: admin@system.com | "
+                "Password: admin123"
+            )
+
+        else:
+
+            logger.info(
+                "Admin account already exists. "
+                "Skipping default admin creation."
+            )
+
+    except Exception as e:
+
+        logger.error(
+            f"Failed to create default admin account: {str(e)}"
+        )
+
+    finally:
+
+        db.close()
 
     logger.info("**************************************************")
 

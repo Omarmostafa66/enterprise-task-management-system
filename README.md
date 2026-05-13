@@ -23,6 +23,7 @@ The platform allows administrators, project managers, and employees to collabora
 - Protected Admin Operations
 - Last Admin Protection
 - Self-Demotion Prevention
+- Automatic Default Admin Creation
 
 ---
 
@@ -159,8 +160,7 @@ enterprise-task-management-system/
 │   └── main.py
 │
 ├── tests/
-├── static/
-├── templates/
+├── frontend/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
@@ -249,6 +249,28 @@ uvicorn app.main:app --reload
 
 ---
 
+## 8️⃣ Open Swagger Documentation
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+---
+
+## 9️⃣ Run Frontend
+
+Open:
+
+```text
+frontend/index.html
+```
+
+Recommended:
+
+Use VS Code Live Server.
+
+---
+
 # 🐳 Run The Project Using Docker
 
 ## 1️⃣ Make Sure Docker Desktop Is Installed
@@ -289,6 +311,20 @@ http://localhost:8000/metrics
 
 ---
 
+## 5️⃣ Run Frontend
+
+Open:
+
+```text
+frontend/index.html
+```
+
+Recommended:
+
+Use VS Code Live Server.
+
+---
+
 # 🌐 API Documentation
 
 Swagger UI:
@@ -296,6 +332,23 @@ Swagger UI:
 ```text
 http://127.0.0.1:8000/docs
 ```
+
+---
+
+# 🔑 Default Admin Account
+
+The system automatically creates a default admin account on first startup if no admin exists.
+
+## Default Admin Credentials
+
+```text
+Email: admin@system.com
+Password: admin123
+```
+
+Important:
+
+After creating your own admin account, it is recommended to deactivate or change the password of the default admin account.
 
 ---
 
@@ -413,6 +466,7 @@ The system tracks:
 - Self-Demotion Prevention
 - Role-Based Permissions
 - Protected Endpoints
+- Automatic Default Admin Creation
 
 ---
 

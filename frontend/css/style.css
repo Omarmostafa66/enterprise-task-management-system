@@ -656,3 +656,197 @@ select.field{
 
 /* SPIN */
 .fa-spin-slow{animation:spin .8s linear infinite}
+
+
+/* ═══════════════════════════════════════════════
+   AUDIT LOGS PANEL
+═══════════════════════════════════════════════ */
+
+/* Audit logs container */
+#auditList{
+  max-height:420px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding-right:4px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+/* Audit log card */
+.audit-log-item{
+
+  position:relative;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,0.02),
+      rgba(255,255,255,0.01)
+    );
+
+  border:1px solid var(--line);
+  border-left:3px solid rgba(79,110,247,.55);
+
+  border-radius:14px;
+
+  padding:14px 16px;
+
+  transition:
+    transform .22s ease,
+    border-color .22s ease,
+    background .22s ease,
+    box-shadow .22s ease;
+
+  animation:fadeUp .35s ease both;
+}
+
+
+/* Hover effect */
+.audit-log-item:hover{
+
+  transform:translateY(-2px);
+
+  border-color:rgba(79,110,247,.22);
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(79,110,247,.05),
+      rgba(124,92,246,.03)
+    );
+
+  box-shadow:
+    0 10px 24px rgba(0,0,0,.25);
+}
+
+/* Top glow line */
+.audit-log-item::before{
+
+  content:'';
+
+  position:absolute;
+
+  top:0;
+  left:12%;
+  right:12%;
+
+  height:1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(79,110,247,.45),
+      transparent
+    );
+}
+
+/* Audit log text */
+.audit-log-text{
+
+  font-family:var(--mono);
+
+  font-size:11px;
+
+  line-height:1.9;
+
+  color:var(--t1);
+
+  white-space:normal;
+
+  word-break:break-word;
+
+  overflow-wrap:anywhere;
+}
+/* Colored audit segments */
+.audit-user{
+  color:#7dd3fc;
+  font-weight:600;
+}
+
+.audit-method{
+  color:#c084fc;
+  font-weight:600;
+}
+
+.audit-path{
+  color:#34d399;
+  font-weight:600;
+}
+
+.audit-status{
+  color:#fbbf24;
+  font-weight:600;
+}
+
+.audit-duration{
+  color:#fb7185;
+  font-weight:600;
+}
+
+/* Audit logs scrollbar */
+#auditList::-webkit-scrollbar{
+  width:5px;
+}
+
+#auditList::-webkit-scrollbar-track{
+  background:transparent;
+}
+
+#auditList::-webkit-scrollbar-thumb{
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(79,110,247,.5),
+      rgba(124,92,246,.4)
+    );
+
+  border-radius:999px;
+}
+
+#auditList::-webkit-scrollbar-thumb:hover{
+  background:
+    linear-gradient(
+      180deg,
+      rgba(79,110,247,.8),
+      rgba(124,92,246,.7)
+    );
+}
+
+/* Audit panel animation */
+#auditLogsPanel{
+  animation:fadeUp .5s .2s ease both;
+}
+
+/* Empty state inside logs */
+#auditList .empty-state{
+
+  min-height:180px;
+
+  display:flex;
+
+  flex-direction:column;
+
+  align-items:center;
+
+  justify-content:center;
+}
+
+/* Responsive */
+@media(max-width:700px){
+
+  #auditList{
+    max-height:320px;
+  }
+
+  .audit-log-item{
+    padding:12px;
+  }
+
+  .audit-log-text{
+    font-size:10px;
+    line-height:1.7;
+  }
+}
