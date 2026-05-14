@@ -14,7 +14,11 @@ async function loadProjects() {
 
     const projects = await res.json();
 
+    /*
+      Update dashboard project counters
+    */
     bump('projCount', projects.length);
+    bump('projectsCountCard', projects.length);
 
     const list =
       document.getElementById('projectList');
@@ -306,12 +310,7 @@ async function createProject() {
 
       document.getElementById('projDueDate').value = '';
 
-      /*
-        Reload projects to update:
-        - Projects list
-        - Task deployment dropdown
-      */
-      loadProjects();
+      await loadProjects();
 
       toast(
         'Project created successfully'
